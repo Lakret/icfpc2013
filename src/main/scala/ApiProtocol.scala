@@ -3,18 +3,18 @@ import spray.json.DefaultJsonProtocol
 case class Problem(
   id: String,
   size: Int,
-  operators: List[String],
+  operators: Array[String],
   solved: Option[Boolean],
   timeLeft: Option[Int])
 
 case class EvalRequest(
   id: Option[String],
-  program: Option[String],
-  arguments: List[String])
+  program: Option[String] = None,
+  arguments: Array[String])
 
 case class EvalResponse(
   status: String,
-  outputs: Option[List[String]],
+  outputs: Option[Array[String]],
   message: Option[String])
 
 case class Guess(
@@ -23,19 +23,19 @@ case class Guess(
 
 case class GuessResponse(
   status: String,
-  values: Option[List[String]],
+  values: Option[Array[String]],
   message: Option[String],
   lightning: Option[Boolean])
 
 case class TrainRequest(
-  size: Option[Int],
-  operators: Option[List[String]])
+  size: Option[Int] = None,
+  operators: Option[Array[String]] = None)
 
 case class TrainingProblem(
   challenge: String,
   id: String,
   size: Int,
-  operators: List[String])
+  operators: Array[String])
 
 case class Window(
   resetsIn: Int,
