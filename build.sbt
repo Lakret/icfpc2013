@@ -17,6 +17,8 @@ libraryDependencies ++= Seq(
 	"com.typesafe" % "config" % "1.0.2"
 	)
 
+scalacOptions ++= Seq("-unchecked")
+
 initialCommands := """
   import evaluator._
 """

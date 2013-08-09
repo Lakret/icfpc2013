@@ -14,7 +14,42 @@ package evaluator
 // The only constants in a source program are 0 and 1.
 // However, \BV programs can be evaluated on arbitrary 64-bit values.
 
-sealed trait BV
+sealed trait BV {
+  def isUnaryOp : Boolean =
+    this match {
+      case Not(_) | Shl1(_) | Shr1(_) | Shr4(_) | Shr16(_) =>
+        true
+      case _ => false
+    }
+
+  def unaryOpArg : BV =
+    this match {
+      case Not(x) => x
+      case Shl1(x) => x
+      case Shr1(x) => x
+      case Shr4(x) => x
+      case Shr16(x) => x
+      case _ =>
+        throw new IllegalArgumentException("%s is not an unary op" format(this))
+    }
+
+  def isBinaryOp : Boolean =
+    this match {
+      case And(_, _) | Or(_, _) | Xor(_, _) | Plus(_, _) =>
+        true
+      case _ => false
+    }
+
+  def binaryOpArgs : List[BV] =
+    this match {
+      case And(x, y)  => List(x, y)
+      case Or(x, y)   => List(x, y)
+      case Xor(x, y)  => List(x, y)
+      case Plus(x, y) => List(x, y)
+      case _ =>
+        throw new IllegalArgumentException("%s is not a binary op" format(this))
+    }
+}
 
 case class Lambda(vars : List[BV], expr : BV) extends BV
 case class Zero() extends BV

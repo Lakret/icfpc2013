@@ -50,5 +50,44 @@ package object evaluator {
         throw new UnsupportedOperationException("malformed expression: %s" format expr.toString)
     }
 
-    //evaluator.eval(Lambda(List(Id("x")), Fold(Id("x"), Zero(), Lambda(List(Id("y"), Id("z")), Or(Id("y"), Id("z"))))))(Evaluator.emptyBindings)(BigInt("1" * 64, 2))
+    protected def app(op : String, args : BV*) =
+      "(%s %s)" format(op, args.map(print(_)).mkString(" "))
+
+    def print(expr : BV) : String =
+      expr match {
+        case Zero() => "0"
+        case One() => "1"
+        case Not(x) => app("not", x)
+        case Shl1(x) => app("shl1", x)
+        case Shr1(x) => app("shr1", x)
+        case Shr4(x) => app("shr4", x)
+        case Shr16(x) => app("shr16", x)
+        case And(x, y) => app("and", x, y)
+        case Or(x, y) => app("or", x, y)
+        case Xor(x, y) => app("xor", x, y)
+        case Plus(x, y) => app("plus", x, y)
+        case Id(x) => x
+        case If0(cond, thenBranch, elseBranch) =>
+          app("if0", cond, thenBranch, elseBranch)
+        case Lambda(vars, expr) =>
+          "(lambda (%s) %s)" format(vars.map(print(_)).mkString(" "), print(expr))
+        case Fold(arg, acc, step) =>  app("fold", arg, acc, step)
+      }
+
+    def size(expr : BV) : Int =
+      expr match {
+        case Zero() => 1
+        case One() => 1
+        case Id(_) => 1
+        case x if x.isUnaryOp =>
+          1 + size(x.unaryOpArg)
+        case x if x.isBinaryOp =>
+          1 + x.binaryOpArgs.map(size(_)).sum
+        case If0(cond, thenBranch, elseBranch) =>
+          1 + List(cond, thenBranch, elseBranch).map(size(_)).sum
+        case Lambda(_ :: Nil, expr) =>
+          1 + size(expr)
+        case Fold(arg, acc, Lambda(_ :: _ :: Nil, expr)) =>
+          2 + List(arg, acc, expr).map(size(_)).sum
+      }
 }

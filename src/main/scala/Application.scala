@@ -13,33 +13,36 @@ import spray.httpx.SprayJsonSupport
 import spray.util._
 
 object Application {
-  val config = ConfigFactory.load()
-  val authToken = config.getString("auth.token")
-  val host = config.getString("host")
-
-  implicit val system = ActorSystem("kontur-ukko-icfpc2013")
-  val log = Logging(system, getClass)
-  import system.dispatcher
-  import SprayJsonSupport._
-  val pipeline = sendReceive ~> unmarshal[TrainingProblem]
-
-
-  def buildUrl(path: String) = {
-    Uri.from(scheme = "http", host = host, path = "/" + path, query = Query("auth" -> authToken))
+  def main(arg : Array[String]) {
+    println("do nothing")
   }
-  def main(arg: Array[String]) {
-    val trainingUrl = buildUrl("train")
-    val request = TrainRequest(size = Some(3), operators = None)
-    val response = pipeline(Post(trainingUrl, request))
-    response.onComplete {
-      case Success(r) =>
-        log.info("response '{}'", r)
-        shutdown()
-    }
-  }
+  // val config = ConfigFactory.load()
+  // val authToken = config.getString("auth.token")
+  // val host = config.getString("host")
 
-  def shutdown(): Unit = {
-    IO(Http).ask(Http.CloseAll)(1.second).await
-    system.shutdown()
-  }
+  // implicit val system = ActorSystem("kontur-ukko-icfpc2013")
+  // val log = Logging(system, getClass)
+  // import system.dispatcher
+  // import SprayJsonSupport._
+  // val pipeline = sendReceive ~> unmarshal[TrainingProblem]
+
+
+  // def buildUrl(path: String) = {
+  //   Uri.from(scheme = "http", host = host, path = "/" + path, query = Query("auth" -> authToken))
+  // }
+  // def main(arg: Array[String]) {
+  //   val trainingUrl = buildUrl("train")
+  //   val request = TrainRequest(size = Some(3), operators = None)
+  //   val response = pipeline(Post(trainingUrl, request))
+  //   response.onComplete {
+  //     case Success(r) =>
+  //       log.info("response '{}'", r)
+  //       shutdown()
+  //   }
+  // }
+
+  // def shutdown(): Unit = {
+  //   IO(Http).ask(Http.CloseAll)(1.second).await
+  //   system.shutdown()
+  // }
 }
