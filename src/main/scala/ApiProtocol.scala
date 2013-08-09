@@ -5,7 +5,7 @@ case class Problem(
   size: Int,
   operators: List[String],
   solved: Option[Boolean],
-  timeLeft: Option[Int]) //time left in seconds
+  timeLeft: Option[Int])
 
 case class EvalRequest(
   id: Option[String],
@@ -17,6 +17,16 @@ case class EvalResponse(
   outputs: Option[List[String]],
   message: Option[String])
 
+case class Guess(
+  id: String,
+  program: String)
+
+case class GuessResponse(
+  status: String,
+  values: Option[List[String]],
+  message: Option[String],
+  lightning: Option[Boolean])
+
 case class TrainRequest(
   size: Option[Int],
   operators: Option[List[String]])
@@ -27,10 +37,30 @@ case class TrainingProblem(
   size: Int,
   operators: List[String])
 
+case class Window(
+  resetsIn: Int,
+  amount: Int,
+  limit: Int)
+
+case class Status(
+  easyChairId: String,
+  contestScore: Int,
+  lightningScore: Int,
+  trainingScore: Int,
+  mismatches: Int,
+  numRequests: Int,
+  requestWindow: Window,
+  cpuWindow: Window,
+  cpuTotalTime: Int)
+
 object ApiProtocol extends DefaultJsonProtocol {
   implicit val problemFormat = jsonFormat5(Problem)
-  implicit val evalRequest = jsonFormat3(EvalRequest)
-  implicit val evalResponse = jsonFormat3(EvalResponse)
-  implicit val trainingFormat = jsonFormat2(TrainRequest)
-  implicit val trainingProblem = jsonFormat4(TrainingProblem)
+  implicit val evalRequestFormat = jsonFormat3(EvalRequest)
+  implicit val evalResponseFormat = jsonFormat3(EvalResponse)
+  implicit val guessFormat = jsonFormat2(Guess)
+  implicit val guessResponseFormat = jsonFormat4(GuessResponse)
+  implicit val trainRequestFormat = jsonFormat2(TrainRequest)
+  implicit val trainingProblemFormat = jsonFormat4(TrainingProblem)
+  implicit val windowFormat = jsonFormat3(Window)
+  implicit val statusFormat = jsonFormat9(Status)
 }
