@@ -1,0 +1,4 @@
+host = icfpc2013.cloudapp.net
+auth.suffix = vpsH1H
+auth.token = 0000abcdefghijklmnopqrstuvwxyz0123456789
+auth.token = ${auth.token}${auth.suffix}
