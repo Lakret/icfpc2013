@@ -27,6 +27,7 @@ object ApiClient {
   import SprayJsonSupport._
   import ApiProtocol._
 
+  var futures = List.empty[Future[Any]]
 
   private def buildUrl(path: String) = {
     Uri.from(scheme = "http", host = host, path = "/" + path, query = Query("auth" -> authToken))
@@ -41,28 +42,32 @@ object ApiClient {
     val pipeline = sendReceive ~> unmarshal[TrainingProblem]
     val url = buildUrl("train")
     val future = pipeline(Post(url, request))
-    response(future)
+    futures = future :: futures
+    future
   }
 
   def Status() = {
     val pipeline = sendReceive ~> unmarshal[Status]
     val url = buildUrl("status")
     val future = pipeline(Post(url))
-    response(future)
+    futures = future :: futures
+    future
   }
 
   def Eval(request: EvalRequest) = {
     val pipeline = sendReceive ~> unmarshal[EvalResponse]
     val url = buildUrl("eval")
     val future = pipeline(Post(url, request))
-    response(future)
+    futures = future :: futures
+    future
   }
 
   def Guess(request: Guess) = {
     val pipeline = sendReceive ~> unmarshal[GuessResponse]
     val url = buildUrl("guess")
     val future = pipeline(Post(url, request))
-    response(future)
+    futures = future :: futures
+    future
   }
 
   def Problems(writeToFile: Option[String] = None) = {
@@ -79,11 +84,18 @@ object ApiClient {
         unmarshaler(response)
       }
     }
-    response(future)
+    futures = future :: futures
+    future
   }
 
-  private def shutdown(): Unit = {
-    IO(Http).ask(Http.CloseAll)(1.second).await
+  def cleanup() {
+    Future.sequence(futures).onComplete {
+      case _ => shutdown()
+    }
+  }
+
+  def shutdown(): Unit = {
+    IO(Http).ask(Http.CloseAll)(5.second).await
     system.shutdown()
   }
 
