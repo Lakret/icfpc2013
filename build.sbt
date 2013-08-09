@@ -16,3 +16,7 @@ libraryDependencies ++= Seq(
 	"com.typesafe.akka" %% "akka-actor"   % "2.2.0-RC1",
 	"com.typesafe" % "config" % "1.0.2"
 	)
+
+initialCommands := """
+  import evaluator._
+"""
