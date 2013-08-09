@@ -10,16 +10,7 @@ import spray.client.pipelining._
 import spray.http._
 import spray.http.Uri.Query
 import spray.httpx.SprayJsonSupport
-import spray.json.DefaultJsonProtocol
 import spray.util._
-
-case class TrainRequest(size: Option[Int], operators: Option[List[String]])
-case class TrainingProblem(challenge: String, id: String, size: Int, operators: List[String])
-
-object ApiProtocol extends DefaultJsonProtocol {
-  implicit val trainingFormat = jsonFormat2(TrainRequest)
-  implicit val trainingProblem = jsonFormat4(TrainingProblem)
-}
 
 object Application {
   val config = ConfigFactory.load()
@@ -30,7 +21,6 @@ object Application {
   val log = Logging(system, getClass)
   import system.dispatcher
   import SprayJsonSupport._
-  import ApiProtocol._
   val pipeline = sendReceive ~> unmarshal[TrainingProblem]
 
 
