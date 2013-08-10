@@ -1,102 +1,68 @@
-import akka.actor.ActorSystem
-import akka.event.Logging
-import akka.io.IO
-import akka.pattern.ask
 import com.typesafe.config.ConfigFactory
+import dispatch._, Defaults._
 import java.io.PrintWriter
-import scala.concurrent.duration.DurationLong
+import org.json4s.jackson.Serialization
 import scala.concurrent.Future
-import spray.can.Http
-import spray.client.pipelining._
-import spray.http.{HttpResponse, Uri}
-import spray.http.Uri.Query
-import spray.httpx.SprayJsonSupport
-import spray.util.pimpFuture
+import org.json4s._
+import org.json4s.jackson.JsonMethods._
 
 
 object ApiClient {
 
   val config = ConfigFactory.load()
   val authToken = config.getString("auth.token")
-  val host = config.getString("host")
+  val hostname = config.getString("host")
+  implicit val formats = DefaultFormats
 
-  implicit val system = ActorSystem("kontur-ukko-icfpc2013")
-  val log = Logging(system, getClass)
 
-  import system.dispatcher
-  import SprayJsonSupport._
-  import ApiProtocol._
-
-  var futures = List.empty[Future[Any]]
-
-  private def buildUrl(path: String) = {
-    Uri.from(scheme = "http", host = host, path = "/" + path, query = Query("auth" -> authToken))
+  private def buildRequest(path: String, data: Option[AnyRef]) = {
+    val req = (host(hostname) / path <<? Map("auth" -> authToken)).POST
+    if (data.isDefined) req << Serialization.write(data.get) else req
   }
 
-  def response[T](future: Future[T]) = {
-    future onComplete { case _ => shutdown() }
-    future
+  def makeRequest[TResp : Manifest](path: String, data: Option[AnyRef] = None): Future[Option[TResp]] = {
+    val request = buildRequest(path, data)
+    val future = Http(request OK as.String).option
+    future.map { resp =>
+      if (resp.isDefined)
+        Some(parse(resp.get).extract[TResp])
+      else
+        None
+    }
   }
 
-  def Training(request: TrainRequest): Future[TrainingProblem] = {
-    val pipeline = sendReceive ~> unmarshal[TrainingProblem]
-    val url = buildUrl("train")
-    val future = pipeline(Post(url, request))
-    futures = future :: futures
-    future
+  def Training(request: TrainRequest) = {
+    makeRequest[TrainingProblem]("train", Some(request))
   }
 
   def Status() = {
-    val pipeline = sendReceive ~> unmarshal[Status]
-    val url = buildUrl("status")
-    val future = pipeline(Post(url))
-    futures = future :: futures
-    future
+    makeRequest[TrainingProblem]("status")
   }
 
   def Eval(request: EvalRequest) = {
-    val pipeline = sendReceive ~> unmarshal[EvalResponse]
-    val url = buildUrl("eval")
-    val future = pipeline(Post(url, request))
-    futures = future :: futures
-    future
+    makeRequest[Status]("status", Some(request))
   }
 
   def Guess(request: Guess) = {
-    val pipeline = sendReceive ~> unmarshal[GuessResponse]
-    val url = buildUrl("guess")
-    val future = pipeline(Post(url, request))
-    futures = future :: futures
-    future
+    makeRequest[GuessResponse]("guess", Some(request))
   }
 
   def Problems(writeToFile: Option[String] = None) = {
-    val pipeline = sendReceive
-    val url = buildUrl("myproblems")
-    val f: Future[HttpResponse] = pipeline(Post(url))
-    val future = f.map {
-      case response => {
+    val future = makeRequest[List[Problem]]("myproblems")
+    future map {
+      case Some(problems) => {
         writeToFile.map { x => Some(new PrintWriter(x)).map {
-            writer => writer.write(response.entity.asString); writer.close()
+            writer => {
+              val str = Serialization.write(problems)
+              writer.write(str)
+              writer.close()
+            }
           }
         }
-        val unmarshaler = unmarshal[Array[Problem]]
-        unmarshaler(response)
       }
+      case None => ()
     }
-    futures = future :: futures
     future
-  }
-
-  def cleanup() {
-    Future.sequence(futures).onComplete {
-      case _ => shutdown()
-    }
-  }
-
-  def shutdown(): Unit = {
-    IO(Http).ask(Http.CloseAll)(5.second).await
-    system.shutdown()
   }
 
 }

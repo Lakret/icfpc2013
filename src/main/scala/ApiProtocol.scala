@@ -1,5 +1,3 @@
-import spray.json.DefaultJsonProtocol
-
 case class Problem(
   id: String,
   size: Int,
@@ -53,14 +51,3 @@ case class Status(
   cpuWindow: Window,
   cpuTotalTime: Int)
 
-object ApiProtocol extends DefaultJsonProtocol {
-  implicit val problemFormat = jsonFormat5(Problem)
-  implicit val evalRequestFormat = jsonFormat3(EvalRequest)
-  implicit val evalResponseFormat = jsonFormat3(EvalResponse)
-  implicit val guessFormat = jsonFormat2(Guess)
-  implicit val guessResponseFormat = jsonFormat4(GuessResponse)
-  implicit val trainRequestFormat = jsonFormat2(TrainRequest)
-  implicit val trainingProblemFormat = jsonFormat4(TrainingProblem)
-  implicit val windowFormat = jsonFormat3(Window)
-  implicit val statusFormat = jsonFormat9(Status)
-}

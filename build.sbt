@@ -11,10 +11,10 @@ resolvers ++= Seq(
 
 libraryDependencies ++= Seq(
 	"org.scalatest" % "scalatest_2.10" % "1.9.1" % "test",
-	"io.spray" % "spray-client" % "1.2-M8",
-	"io.spray" %%  "spray-json" % "1.2.5",
-	"com.typesafe.akka" %% "akka-actor"   % "2.2.0-RC1",
-	"com.typesafe" % "config" % "1.0.2"
+	"com.typesafe" % "config" % "1.0.2",
+	"org.json4s" %% "json4s-jackson" % "3.2.5",
+	"net.databinder.dispatch" %% "dispatch-core" % "0.11.0",
+	"org.jboss.netty" % "netty" % "3.2.9.Final"
 	)
 
 scalacOptions ++= Seq("-unchecked")
