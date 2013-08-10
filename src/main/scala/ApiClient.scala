@@ -36,11 +36,11 @@ object ApiClient {
   }
 
   def Status() = {
-    makeRequest[TrainingProblem]("status")
+    makeRequest[Status]("status")
   }
 
   def Eval(request: EvalRequest) = {
-    makeRequest[Status]("status", Some(request))
+    makeRequest[EvalResponse]("eval", Some(request))
   }
 
   def Guess(request: Guess) = {

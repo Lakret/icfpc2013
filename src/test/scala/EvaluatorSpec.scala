@@ -17,8 +17,4 @@ class EvaluatorSpec extends FlatSpec {
   "print" should "work" in {
     assert(evaluator.print(foldTest) === "(lambda (x) (fold x 0 (lambda (y z) (or y z))))")
   }
-
-  "size" should "work" in {
-    assert(evaluator.size(foldTest) === 8)
-  }
 }

@@ -2,11 +2,11 @@ package evaluator
 
 package object evaluator {
   //TODO
-  def validate(expr : BV) = throw new UnsupportedOperationException
+  def validate(expr : Expr) = throw new UnsupportedOperationException
 
   def emptyBindings = Map[String, BigInt]()
 
-  def eval(expr : BV)(bindingsTable : Map[String, BigInt])(input : BigInt) : BigInt =
+  def eval(expr : Expr)(bindingsTable : Map[String, BigInt])(input : BigInt) : BigInt =
     expr match {
       case Lambda(Id(x) :: Nil, inner) =>
         evalInner(inner)(bindingsTable + ((x, input)))
@@ -14,7 +14,7 @@ package object evaluator {
         throw new IllegalArgumentException("top level expression must has form `lambda(x)(e)`")
     }
 
-  def evalInner(expr : BV)(implicit bindingsTable : Map[String, BigInt]) : BigInt =
+  def evalInner(expr : Expr)(implicit bindingsTable : Map[String, BigInt]) : BigInt =
     expr match {
       case Zero() => 0
       case One() => 1
@@ -31,7 +31,7 @@ package object evaluator {
         if (evalInner(cond) == 0) evalInner(thenBranch)
         else evalInner(elseBranch)
       case Fold(init, currAcc, Lambda(Id(x) :: Id(acc) :: Nil, expr)) =>
-        (evalInner(init).toString(2).reverse.grouped(8).toList.foldLeft(evalInner(currAcc)){
+        evalInner(init).toString(2).reverse.grouped(8).toList.foldLeft(evalInner(currAcc)) {
           case (accv, _v) => {
             val v = BigInt(_v, 2)
             //println("accv = %s, v = %s" format(accv, v))
@@ -39,7 +39,7 @@ package object evaluator {
               x -> v,
               acc -> accv))
           }
-        })
+        }
       case Id(name) =>
         if (bindingsTable.contains(name)) {
           //println("[%s]=%s" format(name, bindingsTable(name)))
@@ -50,10 +50,10 @@ package object evaluator {
         throw new UnsupportedOperationException("malformed expression: %s" format expr.toString)
     }
 
-    protected def app(op : String, args : BV*) =
+    protected def app(op : String, args : Expr*) =
       "(%s %s)" format(op, args.map(print(_)).mkString(" "))
 
-    def print(expr : BV) : String =
+    def print(expr : Expr) : String =
       expr match {
         case Zero() => "0"
         case One() => "1"
@@ -72,22 +72,5 @@ package object evaluator {
         case Lambda(vars, expr) =>
           "(lambda (%s) %s)" format(vars.map(print(_)).mkString(" "), print(expr))
         case Fold(arg, acc, step) =>  app("fold", arg, acc, step)
-      }
-
-    def size(expr : BV) : Int =
-      expr match {
-        case Zero() => 1
-        case One() => 1
-        case Id(_) => 1
-        case x if x.isUnaryOp =>
-          1 + size(x.unaryOpArg)
-        case x if x.isBinaryOp =>
-          1 + x.binaryOpArgs.map(size(_)).sum
-        case If0(cond, thenBranch, elseBranch) =>
-          1 + List(cond, thenBranch, elseBranch).map(size(_)).sum
-        case Lambda(_ :: Nil, expr) =>
-          1 + size(expr)
-        case Fold(arg, acc, Lambda(_ :: _ :: Nil, expr)) =>
-          2 + List(arg, acc, expr).map(size(_)).sum
       }
 }

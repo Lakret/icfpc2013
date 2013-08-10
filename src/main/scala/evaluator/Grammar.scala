@@ -13,7 +13,7 @@ package evaluator
 // A valid program P contains at most one occurrence of "fold".
 // The only constants in a source program are 0 and 1.
 // However, \BV programs can be evaluated on arbitrary 64-bit values.
-
+/*
 sealed trait BV {
   def isUnaryOp : Boolean =
     this match {
@@ -50,19 +50,41 @@ sealed trait BV {
         throw new IllegalArgumentException("%s is not a binary op" format(this))
     }
 }
+*/
 
-case class Lambda(vars : List[BV], expr : BV) extends BV
-case class Zero() extends BV
-case class One() extends BV
-case class If0(cond : BV, thenBranch : BV, elseBranch : BV) extends BV
-case class Fold(arg : BV, acc : BV, step : Lambda) extends BV
-case class Not(arg : BV) extends BV
-case class Shl1(arg : BV) extends BV
-case class Shr1(arg : BV) extends BV
-case class Shr4(arg : BV) extends BV
-case class Shr16(arg : BV) extends BV
-case class And(x : BV, y : BV) extends BV
-case class Or(x : BV, y : BV) extends BV
-case class Xor(x : BV, y : BV) extends BV
-case class Plus(x : BV, y : BV) extends BV
-case class Id(name : String) extends BV
+sealed trait Expr {
+  def size: Int = this match {
+    case Lambda(vars, expr) => expr.size
+    case Zero() => 1
+    case One() => 1
+    case If0(cond, thenBranch, elseBranch) =>  1 + cond.size + thenBranch.size + elseBranch.size
+    case Fold(arg, acc, step) => 2 + arg.size + acc.size + step.size
+    case _ => throw new Exception(s"Illegal expression: ${this.toString()}")
+  }
+}
+
+sealed trait UnaryOp extends Expr { self =>
+  val arg: Expr
+  override def size = 1 + arg.size
+}
+
+sealed trait BinaryOp extends Expr { self =>
+  val x, y : Expr
+  override def size = 1 + x.size + y.size
+}
+
+case class Lambda(vars : List[Expr], expr : Expr) extends Expr
+case class Zero() extends Expr
+case class One() extends Expr
+case class If0(cond : Expr, thenBranch : Expr, elseBranch : Expr) extends Expr
+case class Fold(arg : Expr, acc : Expr, step : Lambda) extends Expr
+case class Not(arg : Expr) extends UnaryOp
+case class Shl1(arg : Expr) extends UnaryOp
+case class Shr1(arg : Expr) extends UnaryOp
+case class Shr4(arg : Expr) extends UnaryOp
+case class Shr16(arg : Expr) extends UnaryOp
+case class And(x : Expr, y : Expr) extends BinaryOp
+case class Or(x : Expr, y : Expr) extends BinaryOp
+case class Xor(x : Expr, y : Expr) extends BinaryOp
+case class Plus(x : Expr, y : Expr) extends BinaryOp
+case class Id(name : String) extends Expr
