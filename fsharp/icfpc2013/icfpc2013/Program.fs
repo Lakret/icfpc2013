@@ -7,18 +7,6 @@ open System
 open System.Globalization
 open System.Threading
 
-let wrapInTimeout<'x> lamda: 'x =
-    let startD = DateTime.Now 
-    let result = lamda()
-    let endD = DateTime.Now
-    let diff = (int)(endD - startD).TotalMilliseconds
-    if (diff > 5000) then
-        result
-    else
-        Thread.Sleep(5000 - diff)
-        result
-        
-
 let rnd = 
     let ran = new System.Random(int System.DateTime.Now.Ticks)
     ran
@@ -45,18 +33,17 @@ let rec solve id (exprs: array<Expr>) =
     | [| |] -> failwith "no solution"
     | _ -> 
         let program = BV.print exprs.[0] 
-        let guess = {Guess.id = id; program = program}
-        wrapInTimeout (fun _ ->
-            let resp = ApiClient.guess guess 
-            if resp.status = "win" then 
-                exprs.[0]
-            else if resp.status = "mismatch" then
-                let mismatch = Array.map parseUint64 resp.values.Value
-                let rest = Array.filter (fun e -> isSolution e (mismatch.[0]) (mismatch.[1])) exprs.[1..]
-                solve id rest
-            else
-                failwith resp.message.Value
-                )
+        let guess = {Guess.id = id; program = program}    
+        let resp = ApiClient.guess guess 
+        if resp.status = "win" then 
+            exprs.[0]
+        else if resp.status = "mismatch" then
+            let mismatch = Array.map parseUint64 resp.values.Value
+            let rest = Array.filter (fun e -> isSolution e (mismatch.[0]) (mismatch.[1])) exprs.[1..]
+            solve id rest
+        else
+            failwith resp.message.Value
+
 
 let solveTask id size operators =
     let candidats = Generator.solve3 operators
@@ -78,14 +65,11 @@ let solveReal problem =
 
 [<EntryPoint>]
 let main argv = 
-//    /let smallProblems = wrapInTimeout (fun _ ->
-//        let problems = ApiClient.problems
-//        Array.filter (fun x -> x.size = 3 && (x.solved.IsNone || x.solved.IsSome && x.solved.Value = false)) problems
-//        )
-//    let l = smallProblems
+//    let problems = ApiClient.problems
+//    let smallProblems = Array.filter (fun x -> x.size = 3 && (x.solved.IsNone || x.solved.IsSome && x.solved.Value = false)) problems
 //    let results = Array.map solveReal l
     let startD = DateTime.Now
-    let a = Seq.toArray (seq { for x in 1..30 do
+    let a = Seq.toArray (seq { for x in 1..20 do
                                 let status = ApiClient.train {TrainRequest.size = Some 3; operators = None }
                                 yield status
         })

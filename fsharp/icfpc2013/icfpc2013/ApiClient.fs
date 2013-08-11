@@ -9,7 +9,7 @@ open System.Threading
 
 let baseUrl = "http://icfpc2013.cloudapp.net"
 let authToken = "0201LxVGJ0tIY2MX5ce2dKYAU4b2NXYSXpOmNoQvvpsH1H"
-let timeout = 1000
+let timeout = 4000
 
 let rec request<'b, 'a> (path: string)(data: Option<'a>) =  
     let body = if data.IsSome then JsonSerializer.toJson data.Value else ""
@@ -31,6 +31,7 @@ let rec request<'b, 'a> (path: string)(data: Option<'a>) =
             failwith ("wrong status code: " + resp.StatusCode.ToString())
     with
         | :? WebException as e when e.Status = WebExceptionStatus.ProtocolError -> 
+                printfn "retry"
                 Thread.Sleep(timeout)
                 request path data
 
