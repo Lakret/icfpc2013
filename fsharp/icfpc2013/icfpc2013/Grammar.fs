@@ -59,14 +59,23 @@ let rec evaluate (env: Map<string, uint64>) exp =
     | Or (x, y) -> (evaluate env x) ||| (evaluate env y)
     | Plus (x, y) -> (evaluate env x) + (evaluate env y)
     | Fold(init, currAcc, Lambda([|x; acc|], body)) ->
+        printfn "init %x" <| evaluate env init
         let initHex = sprintf "%x" <| evaluate env init
         initHex.ToCharArray()
         |> Array.fold 
+            (fun ((curr : string), res) elem -> 
+                if curr.Length = 2 then 
+                    (elem.ToString(), res @ [curr])
+                else 
+                    (curr + elem.ToString(), res))
+            ("", [])
+        |> (fun (last, all) -> all @ [last])
+        |> List.fold 
             (fun accv elem ->
-                let v = Convert.ToUInt64(elem.ToString(), 16)
+                let v = Convert.ToUInt64(elem, 16)
                 let newEnv = env |> ((Map.remove x) >> (Map.remove acc) >> (Map.add x v) >> (Map.add acc accv))
                 evaluate newEnv body)
-             (evaluate env currAcc)
+            (evaluate env currAcc)
     | x -> malformedInput x
 
 let eval (lambda: Expr)(arg: uint64) =
@@ -104,10 +113,22 @@ open FsUnit
 [<TestFixtureAttribute>]
 type ``simple eval test``() =
     let exp = Lambda([|"x_1"|], Not(Id("x_1")))
+    
     [<TestAttribute>]
     member x.EvalLambdaTest() =
         let result = eval exp 0xffffffffffffffffUL
         result |> should equal 0UL
+
+    [<TestAttribute>]
     member x.PrintTest() =
         let result = print exp
         result |> should equal "(lambda (x_1) (not x_1))"
+
+    [<TestAttribute>]
+    member x.EvalFoldTest() =
+        let expr =
+            Lambda([|"x"|], 
+                Fold(Id("x"), Zero,
+                    Lambda([|"y"; "z"|], Or(Id("y"), Id("z")))))
+        let input = 0x1122334455667788UL
+        eval expr input |> should equal 255
