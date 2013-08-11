@@ -6,6 +6,7 @@ open BV
 open System
 open System.Globalization
 open System.Threading
+open Microsoft.FSharp.Collections
 
 let rnd = 
     let ran = new System.Random(int System.DateTime.Now.Ticks)
@@ -52,11 +53,12 @@ let solveTask id size operators solver =
     let evalResponse = ApiClient.eval {id = Some id; program = None; arguments = printedArgs}
     let argToOutput = Seq.zip args (Array.map parseUint64 evalResponse.outputs.Value)
     let evalTest expr =
-        Seq.forall (fun (arg, out) -> isSolution expr arg out) argToOutput
-    let solutions = Seq.filter evalTest candidats
-    solve id (Seq.toArray solutions)
+        PSeq.forall (fun (arg, out) -> isSolution expr arg out) argToOutput
+    let solutions = PSeq.filter evalTest candidats
+    solve id (PSeq.toArray solutions)
             
-let solveTraining size solver = 
+let solveTraining size = 
+    let solver = Generator.solve size
     let problem = ApiClient.train {TrainRequest.size = Some size; operators = None }
     let result = solveTask problem.id problem.size problem.operators solver
     (problem, result)
@@ -64,18 +66,19 @@ let solveTraining size solver =
 let solveReal problem solver = 
     solveTask problem.id problem.size problem.operators solver
 
-let solveAllReal size solver = 
+let solveAllReal size = 
+    let solver = Generator.solve size
     let problems = ApiClient.problems
     let ourProblems = Array.filter (fun x -> x.size = size && x.solved.IsNone || x.solved.IsSome && x.solved.Value = false && x.timeLeft.Value > 0) problems
     Array.map (fun x -> solveReal x solver) ourProblems
 
 [<EntryPoint>]
 let main argv = 
-    //let trains = Seq.toArray (seq {
-    //        for _ in 1..50 do 
-    //            yield solveTraining 5 Generator.solve5
-    //    })
-    let results = solveAllReal 5 Generator.solve5
+    let trains = Seq.toArray (seq {
+            for _ in 1..10 do 
+                yield solveTraining 7
+        })
+    //let results = solveAllReal 6
     0
 //    let problems = ApiClient.problems
 //    let smallProblems = Array.filter (fun x -> x.size = 3 && (x.solved.IsNone || x.solved.IsSome && x.solved.Value = false)) problems
