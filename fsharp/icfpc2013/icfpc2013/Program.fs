@@ -45,8 +45,8 @@ let rec solve id (exprs: array<Expr>) =
             failwith resp.message.Value
 
 
-let solveTask id size operators =
-    let candidats = Generator.solve3 operators
+let solveTask id size operators solver =
+    let candidats = solver operators
     let args = genArgs
     let printedArgs = printArgs args
     let evalResponse = ApiClient.eval {id = Some id; program = None; arguments = printedArgs}
@@ -56,22 +56,33 @@ let solveTask id size operators =
     let solutions = Seq.filter evalTest candidats
     solve id (Seq.toArray solutions)
             
-let solveTraining = 
-    let problem = ApiClient.train {TrainRequest.size = Some 3; operators = None }
-    solveTask problem.id problem.size problem.operators
+let solveTraining size solver = 
+    let problem = ApiClient.train {TrainRequest.size = Some size; operators = None }
+    let result = solveTask problem.id problem.size problem.operators solver
+    (problem, result)
 
-let solveReal problem = 
-    solveTask problem.id problem.size problem.operators
+let solveReal problem solver = 
+    solveTask problem.id problem.size problem.operators solver
+
+let solveAllReal size solver = 
+    let problems = ApiClient.problems
+    let ourProblems = Array.filter (fun x -> x.size = size && x.solved.IsNone || x.solved.IsSome && x.solved.Value = false && x.timeLeft.Value > 0) problems
+    Array.map (fun x -> solveReal x solver) ourProblems
 
 [<EntryPoint>]
 let main argv = 
+    //let trains = Seq.toArray (seq {
+    //        for _ in 1..50 do 
+    //            yield solveTraining 5 Generator.solve5
+    //    })
+    let results = solveAllReal 5 Generator.solve5
+    0
 //    let problems = ApiClient.problems
 //    let smallProblems = Array.filter (fun x -> x.size = 3 && (x.solved.IsNone || x.solved.IsSome && x.solved.Value = false)) problems
 //    let results = Array.map solveReal l
-    let startD = DateTime.Now
-    let a = Seq.toArray (seq { for x in 1..20 do
-                                let status = ApiClient.train {TrainRequest.size = Some 3; operators = None }
-                                yield status
-        })
-    printfn "%d" (int (DateTime.Now - startD).TotalSeconds)
-    0 // return an integer exit code
+//    let startD = DateTime.Now
+//    let a = Seq.toArray (seq { for x in 1..20 do
+//                                let status = ApiClient.train {TrainRequest.size = Some 3; operators = None }
+//                                yield status
+//        })
+//    printfn "%d" (int (DateTime.Now - startD).TotalSeconds)

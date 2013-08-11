@@ -57,7 +57,13 @@ let rec evaluate (env: Map<string, uint64>) exp =
     | Shr16 x -> (evaluate env x) >>> 16
     | And (x, y) -> (evaluate env x) &&& (evaluate env y)
     | Or (x, y) -> (evaluate env x) ||| (evaluate env y)
+    | Xor (x, y) -> (evaluate env x) ^^^ (evaluate env y)
     | Plus (x, y) -> (evaluate env x) + (evaluate env y)
+    | If0(cond, thenB, elseB) -> 
+        if (evaluate env cond) = 0UL then
+            evaluate env thenB
+        else
+            evaluate env elseB
     | Fold(init, currAcc, Lambda([|x; acc|], body)) ->
         printfn "init %x" <| evaluate env init
         let initHex = sprintf "%x" <| evaluate env init
