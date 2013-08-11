@@ -76,6 +76,10 @@
     <Compile Include="Grammar.fs" />
     <Compile Include="Generator.fs" />
     <Compile Include="Program.fs" />
+    <None Include="Scripts\load-refs.fsx" />
+    <None Include="Scripts\load-project.fsx" />
+    <None Include="Scripts\load-refs-Release.fsx" />
+    <None Include="Scripts\load-project-Release.fsx" />
   </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
