@@ -5,8 +5,9 @@ open Generator
 open BV
 open System
 open System.Globalization
-open System.Threading
+open System.Diagnostics
 open Microsoft.FSharp.Collections
+
 
 let rnd = 
     let ran = new System.Random(int System.DateTime.Now.Ticks)
@@ -27,35 +28,49 @@ let printArgs args =
     Array.map printUint64 args
 
 let isSolution expr arg out = 
-    BV.eval expr arg = out
+    let result = BV.eval expr arg
+    result = out
 
-let rec solve id (exprs: array<Expr>) =
+let rec solve id (exprs: seq<Expr>) =
     match exprs with
-    | [| |] -> failwith "no solution"
+    | e when Seq.isEmpty e -> failwith "no solution"
     | _ -> 
-        let program = BV.print exprs.[0] 
+        let head = Seq.head exprs
+        let tail = Seq.skip 1 exprs
+        let program = BV.print head
         let guess = {Guess.id = id; program = program}    
         let resp = ApiClient.guess guess 
         if resp.status = "win" then 
-            exprs.[0]
+            head
         else if resp.status = "mismatch" then
             let mismatch = Array.map parseUint64 resp.values.Value
-            let rest = Array.filter (fun e -> isSolution e (mismatch.[0]) (mismatch.[1])) exprs.[1..]
+            let rest = PSeq.filter (fun e -> isSolution e (mismatch.[0]) (mismatch.[1])) tail
             solve id rest
         else
             failwith resp.message.Value
 
 
 let solveTask id size operators solver =
-    let candidats = solver operators
+    printfn "->task %s %d %A" id size operators
+    let sw = new Stopwatch()
+    sw.Start()
+    let candidats = solver operators |> Seq.toArray
+    printfn "%d expr-s generated in %d" candidats.Length sw.ElapsedMilliseconds
+    sw.Reset()
     let args = genArgs
     let printedArgs = printArgs args
     let evalResponse = ApiClient.eval {id = Some id; program = None; arguments = printedArgs}
+    printfn "requested in %d" sw.ElapsedMilliseconds
+    sw.Reset()
     let argToOutput = Seq.zip args (Array.map parseUint64 evalResponse.outputs.Value)
     let evalTest expr =
-        PSeq.forall (fun (arg, out) -> isSolution expr arg out) argToOutput
+        Seq.forall (fun (arg, out) -> isSolution expr arg out) argToOutput
     let solutions = PSeq.filter evalTest candidats
-    solve id (PSeq.toArray solutions)
+    printfn "filtered in %d" sw.ElapsedMilliseconds
+    let solution = solve id solutions
+    printfn "solved in %d" sw.ElapsedMilliseconds
+    sw.Stop()
+    solution
             
 let solveTraining size = 
     let solver = Generator.solve size
@@ -74,11 +89,18 @@ let solveAllReal size =
 
 [<EntryPoint>]
 let main argv = 
+    let cmplx = if argv.Length > 0 then Int32.Parse(argv.[0]) else 10
+    let count = if argv.Length > 1 then Int32.Parse(argv.[1]) else 5
+    let sw = new Stopwatch()
+    sw.Start()
     let trains = Seq.toArray (seq {
-            for _ in 1..10 do 
-                yield solveTraining 7
+            for _ in 1..count do 
+                yield solveTraining cmplx
         })
-    //let results = solveAllReal 6
+    sw.Stop()
+    printfn "Total %d ms" sw.ElapsedMilliseconds
+    //let results = solveAllReal 7
+    Console.ReadKey() |> ignore
     0
 //    let problems = ApiClient.problems
 //    let smallProblems = Array.filter (fun x -> x.size = 3 && (x.solved.IsNone || x.solved.IsSome && x.solved.Value = false)) problems

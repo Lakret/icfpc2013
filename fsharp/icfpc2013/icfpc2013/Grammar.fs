@@ -65,9 +65,10 @@ let rec evaluate (env: Map<string, uint64>) exp =
         else
             evaluate env elseB
     | Fold(init, currAcc, Lambda([|x; acc|], body)) ->
-        printfn "init %x" <| evaluate env init
-        let initHex = sprintf "%x" <| evaluate env init
-        initHex.ToCharArray()
+        let init'  = evaluate env init
+        let initHex = sprintf "%X" <| init'
+        let initHex' = initHex.PadLeft(16, '0')
+        initHex'.ToCharArray()
         |> Array.fold 
             (fun ((curr : string), res) elem -> 
                 if curr.Length = 2 then 
@@ -76,6 +77,7 @@ let rec evaluate (env: Map<string, uint64>) exp =
                     (curr + elem.ToString(), res))
             ("", [])
         |> (fun (last, all) -> all @ [last])
+        |> List.rev
         |> List.fold 
             (fun accv elem ->
                 let v = Convert.ToUInt64(elem, 16)
@@ -138,3 +140,19 @@ type ``simple eval test``() =
                     Lambda([|"y"; "z"|], Or(Id("y"), Id("z")))))
         let input = 0x1122334455667788UL
         eval expr input |> should equal 255
+    [<TestAttribute>]
+    member x.EvalFoldExtraTest() =
+        let expr =
+            Lambda([|"x"|], 
+                Fold(Id("x"), Zero,
+                    Lambda([|"x"; "y"|], Plus(Id("x"), Id("x")))))
+        let input = 16027026018299601879UL
+        eval expr input |> should equal 444
+    [<TestAttribute>]
+    member x.EvalFoldExtraTest1() =
+        let expr =
+            Lambda([|"x"|], 
+                Fold(Id("x"), Zero,
+                    Lambda([|"x"; "y"|], Or(Id("x"), Id("y")))))
+        let input = 788468176388864416UL
+        eval expr input |> should equal 251

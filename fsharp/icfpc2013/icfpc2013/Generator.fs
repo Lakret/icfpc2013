@@ -2,7 +2,7 @@
 open BV
 
 let mutable id = 0
-let nextId =
+let nextId _ =
     let value = sprintf "x_%d" id 
     id <- id + 1
     value
@@ -18,6 +18,7 @@ let isBinary op =
     | _ -> false
 
 let isIf0 op = op = "if0"
+let isFold op = op = "fold"
 
 let parseUnary op =
     match op with
@@ -37,57 +38,10 @@ let parseBinary op =
     | _ -> failwith ("unknown operator: " + op)
 
 let parseIf0Op op = If0
-    
-let gen1 (args) =
-    seq {
-        yield! args
-        yield One
-        yield Zero
-        }
-
-let gen2 (unaryOps)(args) = 
-    seq {
-        for op in unaryOps do
-            for s1 in gen1(args) do
-                yield op s1
-    } 
-
-let gen3 (unaryOps)(binaryOps)(args) = 
-    seq {
-        for op in binaryOps do
-            for x1 in gen1 args do
-                for y1 in gen1 args do
-                    yield op (x1, y1) 
-        for op1 in unaryOps do
-            for op2 in unaryOps do
-                for x in args do
-                    yield op1 (op2 x)
-    }
-
-let gen4 unaryOps binaryOps ifOp args = 
-    seq {
-        for op in ifOp do
-            for cond in gen1 args do
-                for thenB in gen1 args do
-                    for elseB in gen1 args do
-                        yield op (cond, thenB, elseB)
-        for op in binaryOps do
-            for x in gen2 unaryOps args do 
-                for y in gen1 args do
-                    yield op (x, y)
-        for op1 in unaryOps do
-            for op2 in binaryOps do 
-                for x in gen1 args do
-                    for y in gen1 args do
-                        yield op1 (op2 (x, y))
-            for op2 in unaryOps do
-                for op3 in unaryOps do
-                    for x in gen1 args do
-                        yield op1 (op2 (op3 x)) 
-    }
-
-let rec gen size (unaryOps, binaryOps, if0Ops, args) =
-    let allArgs = (unaryOps, binaryOps, if0Ops, args)
+let parseFold op = Fold
+   
+let rec gen size (unaryOps, binaryOps, if0Ops, foldOps, args) =
+    let allArgs = (unaryOps, binaryOps, if0Ops, foldOps, args)
     let gen1 = fun _ -> gen 1 allArgs
     let genUnary _ =
         let size' = size - 1
@@ -109,14 +63,31 @@ let rec gen size (unaryOps, binaryOps, if0Ops, args) =
         let size' = size - 1
         seq {
             for op in if0Ops do
-                for i in 1..(size - 2) do
-                    for j in 1..(size - 2) do
-                        let k = size - i - j
+                for i in 1..(size' - 2) do
+                    for j in 1..(size' - 2) do
+                        let k = size' - i - j
                         if k > 0 then
                           for cond in gen i allArgs do
                             for thenB in gen j allArgs do
                                 for elseB in gen k allArgs do
                                     yield op (cond, thenB, elseB)                            
+            }
+    let genFold _ = 
+        let size' = size - 2
+        let x = nextId ()
+        let y = nextId ()
+        let innerA = [|Id(x); Id(y)|]
+        let innerArgs = (unaryOps, binaryOps, if0Ops, foldOps, innerA)
+        seq {
+            for op in foldOps do
+                for i in 1..(size' - 2) do
+                    for j in 1..(size' - 2) do
+                        let k = size' - i - j
+                        if k > 0 then
+                          for e0 in gen i allArgs do
+                            for e1 in gen j allArgs do
+                                for e2 in gen k innerArgs do
+                                    yield op (e0, e1, Lambda([|x; y|], e2))                            
             }
     match size with
     | 1 -> 
@@ -132,20 +103,42 @@ let rec gen size (unaryOps, binaryOps, if0Ops, args) =
         yield! genUnary ()
         yield! genBinary ()
         } 
-    | 4 | 5 | 6 -> seq {
+    | 4 | 5 -> seq {
         yield! genIf0 ()
         yield! genBinary ()
         yield! genUnary ()
         }
-    | _ -> failwith "its too big for now"
+    | _ -> seq {
+        yield! genFold ()
+        yield! genIf0 ()
+        yield! genBinary ()
+        yield! genUnary ()
+        }
+
+let genTFold size (unaryOps, binaryOps, if0Ops, foldOps, args: array<Expr>) =
+        let allArgs = (unaryOps, binaryOps, if0Ops, foldOps, args)
+        let size' = size - 2
+        let x = nextId ()
+        let y = nextId ()
+        let innerA = [|Id(x); Id(y)|]
+        let innerArgs = (unaryOps, binaryOps, if0Ops, foldOps, innerA)
+        seq {
+            for e2 in gen (size' - 2) innerArgs do
+                yield Fold(args.[0], Zero, Lambda([|x; y|], e2))
+            }
 
 let solve size ops = 
-    let arg = nextId
+    let arg = nextId ()
     let unaryOps = Array.filter isUnary ops |> Array.map parseUnary
     let binaryOps = Array.filter isBinary ops |> Array.map parseBinary
     let if0Ops = Array.filter isIf0 ops |> Array.map parseIf0Op
+    let foldOps = Array.filter isFold ops |> Array.map parseFold
+    let s = if (Seq.exists (fun x -> x = "tfold") ops) then
+                genTFold (size - 1) (unaryOps, binaryOps, if0Ops, foldOps, [|Id(arg)|])
+            else
+                gen (size - 1) (unaryOps, binaryOps, if0Ops, foldOps, [|Id(arg)|]) 
     seq {
-        for expr in gen (size - 1) (unaryOps, binaryOps, if0Ops, [|Id(arg)|]) do
+        for expr in s do
             yield Lambda([|arg|], expr)
     } 
     
