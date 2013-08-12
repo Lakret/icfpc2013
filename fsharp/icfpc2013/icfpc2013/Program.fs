@@ -54,14 +54,12 @@ let solveTask id size operators solver =
     printfn "->task %s %d %A" id size operators
     let sw = new Stopwatch()
     sw.Start()
-    let candidats = solver operators |> Seq.toArray
-    printfn "%d expr-s generated in %d" candidats.Length sw.ElapsedMilliseconds
-    sw.Reset()
+    let candidats = solver operators 
+    printfn "%d expr-s generated in %d" (Seq.length candidats) sw.ElapsedMilliseconds
     let args = genArgs
     let printedArgs = printArgs args
     let evalResponse = ApiClient.eval {id = Some id; program = None; arguments = printedArgs}
     printfn "requested in %d" sw.ElapsedMilliseconds
-    sw.Reset()
     let argToOutput = Seq.zip args (Array.map parseUint64 evalResponse.outputs.Value)
     let evalTest expr =
         Seq.forall (fun (arg, out) -> isSolution expr arg out) argToOutput
